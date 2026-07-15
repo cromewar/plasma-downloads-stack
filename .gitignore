@@ -1,0 +1,6 @@
+# Build/scratch
+*.qmlc
+*.jsc
+.cache/
+scratchpad/
+*.log
