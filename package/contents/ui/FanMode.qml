@@ -1,9 +1,11 @@
 import QtQuick
 import QtQuick.Window
+import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents
 
-// macOS-style fan: files arc upward from the panel icon, newest nearest.
+// macOS-style fan: files arc up from the panel icon, newest nearest. The fan
+// grows with the number of files up to a screen-based height cap, then scrolls.
 Item {
     id: fan
 
@@ -27,39 +29,41 @@ Item {
     readonly property real gapToLabel: 10
     readonly property real labelW: iconSize * 3
     readonly property real iconColStart: labelsLeft ? (pad + labelW + gapToLabel) : pad
+    readonly property real gap: iconSize * 1.04
 
-    // Spacing between successive icons. The fan grows with the number of files
-    // but is capped to the space available on screen: past that point the icons
-    // overlap more (smaller gap) so every file stays visible, like macOS.
+    // The fan grows with the number of files, but its height is capped to the
+    // space on screen. Once the files no longer fit, the column scrolls instead
+    // of shrinking, so it works for any count.
     readonly property real overhead: pad * 2 + chipH + chipGap
     readonly property real maxHeight: (Screen.desktopAvailableHeight > 0
         ? Screen.desktopAvailableHeight : 1000) * 0.82
-    readonly property real baseGap: iconSize * 1.04
-    readonly property real gap: {
-        if (n <= 1)
-            return baseGap;
-        var avail = Math.max(iconSize * 0.5, maxHeight - overhead - iconSize);
-        var needed = (n - 1) * baseGap;
-        return needed > avail ? (avail / (n - 1)) : baseGap;
-    }
+    readonly property real naturalContentH: n > 0 ? ((n - 1) * gap + iconSize) : iconSize
+    readonly property real maxContentH: Math.max(iconSize * 2, maxHeight - overhead)
+    readonly property bool needsScroll: naturalContentH > maxContentH
+    readonly property real contentVisibleH: needsScroll ? maxContentH : naturalContentH
 
     property int hoveredIndex: -1
 
     implicitWidth: pad + labelW + gapToLabel + iconSize + curveAmount + pad
-    implicitHeight: overhead + (n > 0 ? (n - 1) * gap + iconSize : iconSize)
+    implicitHeight: overhead + contentVisibleH
 
     function iconLeft(i) {
         return iconColStart + curveAmount * Math.pow(n > 1 ? i / (n - 1) : 0, 1.5);
     }
-    function iconTop(i) {
-        if (up) {
-            var topIconTop = pad + chipH + chipGap;
-            return topIconTop + (n - 1 - i) * gap;   // i=0 (newest) at the bottom
-        }
-        return pad + i * gap;                         // i=0 (newest) at the top
+    // Vertical position of an icon within the scrolling content (0-based).
+    function tileY(i) {
+        if (up)
+            return naturalContentH - iconSize - i * gap;   // i=0 (newest) at the bottom
+        return i * gap;                                     // i=0 (newest) at the top
     }
     function itemScale(i) {
         return 1.0 - 0.10 * (n > 1 ? i / (n - 1) : 0);
+    }
+
+    // Keep the newest files in view when the fan (re)opens.
+    onActiveChanged: if (active) resetScroll()
+    function resetScroll() {
+        flick.contentY = up ? Math.max(0, flick.contentHeight - flick.height) : 0;
     }
 
     // Click on empty space closes the fan
@@ -68,7 +72,60 @@ Item {
         onClicked: fan.closeRequested()
     }
 
-    // "Open Downloads" / "Show all" chip at the far end of the fan
+    // The scrolling column of files
+    Flickable {
+        id: flick
+        visible: fan.n > 0
+        x: 0
+        y: fan.up ? (fan.pad + fan.chipH + fan.chipGap) : fan.pad
+        width: fan.implicitWidth
+        height: fan.contentVisibleH
+        contentWidth: width
+        contentHeight: fan.naturalContentH
+        clip: true
+        interactive: fan.needsScroll
+        boundsBehavior: Flickable.StopAtBounds
+        Component.onCompleted: fan.resetScroll()
+
+        Repeater {
+            model: fan.files
+            delegate: FileTile {
+                required property int index
+                required property var modelData
+
+                iconSize: fan.iconSize
+                fileName: modelData.name
+                fileUrl: modelData.url
+                isDir: modelData.isDir
+                labelWidth: fan.labelW
+                gapToLabel: fan.gapToLabel
+                labelOnLeft: fan.labelsLeft
+                tileScale: fan.itemScale(index)
+
+                targetX: fan.iconLeft(index)
+                targetY: fan.tileY(index)
+                collapsedX: fan.iconLeft(0)
+                collapsedY: fan.tileY(0)
+
+                shown: fan.active
+                stagger: Math.min(index, 14) * 24
+                hovered: fan.hoveredIndex === index
+                z: fan.hoveredIndex === index ? 100 : (fan.n - index)
+
+                onEntered: fan.hoveredIndex = index
+                onExited: if (fan.hoveredIndex === index) fan.hoveredIndex = -1
+                onClicked: fan.openFile(fileUrl)
+            }
+        }
+
+        QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+            id: sbar
+            visible: fan.needsScroll
+            policy: QQC2.ScrollBar.AsNeeded
+        }
+    }
+
+    // "Open Downloads" / "Show all" chip, pinned at the far end of the fan
     MouseArea {
         id: chip
         z: 50
@@ -118,36 +175,5 @@ Item {
         anchors.centerIn: parent
         opacity: 0.7
         text: i18n("No recent downloads")
-    }
-
-    Repeater {
-        model: fan.files
-        delegate: FileTile {
-            required property int index
-            required property var modelData
-
-            iconSize: fan.iconSize
-            fileName: modelData.name
-            fileUrl: modelData.url
-            isDir: modelData.isDir
-            labelWidth: fan.labelW
-            gapToLabel: fan.gapToLabel
-            labelOnLeft: fan.labelsLeft
-            tileScale: fan.itemScale(index)
-
-            targetX: fan.iconLeft(index)
-            targetY: fan.iconTop(index)
-            collapsedX: fan.iconLeft(0)
-            collapsedY: fan.iconTop(0)
-
-            shown: fan.active
-            stagger: index * 24
-            hovered: fan.hoveredIndex === index
-            z: fan.hoveredIndex === index ? 100 : (fan.n - index)
-
-            onEntered: fan.hoveredIndex = index
-            onExited: if (fan.hoveredIndex === index) fan.hoveredIndex = -1
-            onClicked: fan.openFile(fileUrl)
-        }
     }
 }

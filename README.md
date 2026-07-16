@@ -43,7 +43,8 @@ cd plasma-downloads-stack
 - **Three views**, switchable in settings:
   - **Fan** — a curved stack that arcs up from the icon, newest nearest, floating
     frameless over the desktop. Names auto-flip to the side that keeps the icons above
-    the panel icon (like the macOS stack near a screen edge).
+    the panel icon (like the macOS stack near a screen edge). It grows with the number
+    of files, then **scrolls** once it would run off the screen.
   - **Grid** — thumbnails with names underneath, on a tidy card.
   - **List** — one file per row with its icon, name and kind.
 - **Live** — new downloads appear at the front automatically.

@@ -134,6 +134,8 @@ Item {
         anchors.fill: parent
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
+        // Don't let an enclosing Flickable (scrollable fan) steal a drag-out.
+        preventStealing: true
 
         property bool dragging: false
         property point pressPos
