@@ -40,8 +40,9 @@ Item {
         + Kirigami.Units.smallSpacing * 3 + sep.height
     readonly property real naturalCardH: chromeH + gridH
     // Grow with the content up to a comfortable limit, then scroll — so a lot of
-    // files don't stretch the card to the full height of the screen.
-    readonly property real maxCardH: availH * 0.6 - panelInset
+    // files don't stretch the card to the full height of the screen. Grid cells
+    // are tall, so this is tighter than the list's to reach the limit sooner.
+    readonly property real maxCardH: availH * 0.55 - panelInset
     readonly property real cardH: Math.min(naturalCardH, maxCardH)
     readonly property real cardW: Math.max(cols * cellW, Kirigami.Units.gridUnit * 12) + pad * 2
 
