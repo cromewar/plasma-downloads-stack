@@ -1,9 +1,14 @@
 import QtQuick
+import QtQuick.Window
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents
 
-// A tidy grid of thumbnails with names underneath.
+// A tidy grid of thumbnails with names underneath, on a floating card.
+// The card draws itself (the dialog is frameless) so it always hugs its
+// content and can be lifted clear of the panel, whatever size the shell
+// gives the popup window.
 Item {
     id: grid
 
@@ -13,6 +18,7 @@ Item {
     property int columns: 3
     property string folderPath: ""
     property bool active: false
+    property bool up: true
 
     signal openFile(var url)
     signal openFolder()
@@ -24,119 +30,171 @@ Item {
     readonly property real cellH: iconSize + Kirigami.Units.gridUnit * 2.8
     readonly property int pad: Kirigami.Units.largeSpacing
 
-    implicitWidth: Math.max(cols * cellW, header.implicitWidth) + pad * 2
-    implicitHeight: header.height + (n > 0 ? Math.ceil(n / cols) * cellH : Kirigami.Units.gridUnit * 4) + pad * 2 + Kirigami.Units.smallSpacing
+    // Gap between the card and the panel edge it springs from.
+    readonly property real panelInset: Math.round(Kirigami.Units.gridUnit * 2)
+    readonly property real availH: Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : 1000
 
-    ColumnLayout {
+    readonly property int gridRows: n > 0 ? Math.ceil(n / cols) : 1
+    readonly property real gridH: n > 0 ? gridRows * cellH : Kirigami.Units.gridUnit * 4
+    readonly property real chromeH: pad * 2 + header.implicitHeight
+        + Kirigami.Units.smallSpacing * 3 + sep.height
+    readonly property real naturalCardH: chromeH + gridH
+    readonly property real maxCardH: availH * 0.82 - panelInset
+    readonly property real cardH: Math.min(naturalCardH, maxCardH)
+    readonly property real cardW: Math.max(cols * cellW, Kirigami.Units.gridUnit * 12) + pad * 2
+
+    implicitWidth: cardW
+    implicitHeight: cardH + panelInset
+
+    // Clicking the transparent margin around the card dismisses it.
+    MouseArea {
         anchors.fill: parent
-        anchors.margins: grid.pad
-        spacing: Kirigami.Units.smallSpacing
+        onClicked: grid.closeRequested()
+    }
 
-        // Header: title + open-folder button
-        RowLayout {
-            id: header
-            Layout.fillWidth: true
+    Kirigami.ShadowedRectangle {
+        id: card
+        width: grid.cardW
+        height: grid.cardH
+        anchors.horizontalCenter: parent.horizontalCenter
+        // Sit at the panel end of the popup, a gap short of the edge.
+        y: grid.up ? (grid.height - grid.panelInset - height) : grid.panelInset
+
+        radius: Kirigami.Units.largeSpacing
+        color: Kirigami.Theme.backgroundColor
+        border.width: 1
+        border.color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.15)
+        shadow.size: 18
+        shadow.color: Qt.rgba(0, 0, 0, 0.35)
+        shadow.yOffset: 3
+
+        opacity: grid.active ? 1.0 : 0.0
+        scale: grid.active ? 1.0 : 0.96
+        Behavior on opacity { NumberAnimation { duration: 160 } }
+        Behavior on scale { NumberAnimation { duration: 200; easing.type: Easing.OutCubic } }
+
+        ColumnLayout {
+            anchors.fill: parent
+            anchors.margins: grid.pad
             spacing: Kirigami.Units.smallSpacing
-            Kirigami.Icon {
-                source: "folder-download"
-                Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
-                Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
-            }
-            Kirigami.Heading {
-                level: 4
-                text: i18n("Downloads")
+
+            RowLayout {
+                id: header
                 Layout.fillWidth: true
-                elide: Text.ElideRight
+                spacing: Kirigami.Units.smallSpacing
+                Kirigami.Icon {
+                    source: "folder-download"
+                    Layout.preferredWidth: Kirigami.Units.iconSizes.smallMedium
+                    Layout.preferredHeight: Kirigami.Units.iconSizes.smallMedium
+                }
+                Kirigami.Heading {
+                    level: 4
+                    text: i18n("Downloads")
+                    Layout.fillWidth: true
+                    elide: Text.ElideRight
+                }
+                PlasmaComponents.ToolButton {
+                    icon.name: "folder-open-symbolic"
+                    text: grid.extraCount > 0 ? i18n("Show all (%1)", grid.n + grid.extraCount) : i18n("Open folder")
+                    display: PlasmaComponents.AbstractButton.TextBesideIcon
+                    onClicked: grid.openFolder()
+                }
             }
-            PlasmaComponents.ToolButton {
-                icon.name: "folder-open-symbolic"
-                text: grid.extraCount > 0 ? i18n("Show all (%1)", grid.n + grid.extraCount) : i18n("Open folder")
-                display: PlasmaComponents.AbstractButton.TextBesideIcon
-                onClicked: grid.openFolder()
+
+            Kirigami.Separator { id: sep; Layout.fillWidth: true }
+
+            PlasmaComponents.Label {
+                visible: grid.n === 0
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                horizontalAlignment: Text.AlignHCenter
+                verticalAlignment: Text.AlignVCenter
+                opacity: 0.7
+                text: i18n("No recent downloads")
             }
-        }
 
-        Kirigami.Separator { Layout.fillWidth: true }
+            Flickable {
+                id: gridFlick
+                visible: grid.n > 0
+                Layout.fillWidth: true
+                Layout.fillHeight: true
+                contentHeight: theGrid.height
+                contentWidth: width
+                clip: true
+                interactive: contentHeight > height
+                boundsBehavior: Flickable.StopAtBounds
 
-        PlasmaComponents.Label {
-            visible: grid.n === 0
-            Layout.fillWidth: true
-            Layout.fillHeight: true
-            horizontalAlignment: Text.AlignHCenter
-            verticalAlignment: Text.AlignVCenter
-            opacity: 0.7
-            text: i18n("No recent downloads")
-        }
+                QQC2.ScrollBar.vertical: QQC2.ScrollBar { policy: QQC2.ScrollBar.AsNeeded }
 
-        Grid {
-            id: theGrid
-            visible: grid.n > 0
-            Layout.alignment: Qt.AlignHCenter
-            columns: grid.cols
-            columnSpacing: 0
-            rowSpacing: 0
+                Grid {
+                    id: theGrid
+                    columns: grid.cols
+                    columnSpacing: 0
+                    rowSpacing: 0
+                    x: Math.max(0, (gridFlick.width - width) / 2)
 
-            Repeater {
-                model: grid.files
-                delegate: FileDragItem {
-                    id: cell
-                    required property int index
-                    required property var modelData
-                    width: grid.cellW
-                    height: grid.cellH
-                    fileUrl: modelData.url
-                    fileName: modelData.name
-                    isDir: modelData.isDir
-
-                    opacity: grid.active ? 1.0 : 0.0
-                    scale: grid.active ? 1.0 : 0.85
-                    Behavior on opacity { SequentialAnimation {
-                        PauseAnimation { duration: grid.active ? index * 20 : 0 }
-                        NumberAnimation { duration: 160 }
-                    } }
-                    Behavior on scale { SequentialAnimation {
-                        PauseAnimation { duration: grid.active ? index * 20 : 0 }
-                        NumberAnimation { duration: 200; easing.type: Easing.OutBack; easing.overshoot: 1.1 }
-                    } }
-
-                    onClicked: grid.openFile(modelData.url)
-
-                    Rectangle {
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing / 2
-                        radius: Kirigami.Units.smallSpacing
-                        color: Kirigami.Theme.highlightColor
-                        opacity: cell.hovered ? 0.18 : 0.0
-                        Behavior on opacity { NumberAnimation { duration: 120 } }
-                    }
-
-                    ColumnLayout {
-                        anchors.fill: parent
-                        anchors.margins: Kirigami.Units.smallSpacing
-                        spacing: Kirigami.Units.smallSpacing
-                        FileThumb {
-                            Layout.alignment: Qt.AlignHCenter
-                            Layout.preferredWidth: grid.iconSize
-                            Layout.preferredHeight: grid.iconSize
-                            fileName: modelData.name
+                    Repeater {
+                        model: grid.files
+                        delegate: FileDragItem {
+                            id: cell
+                            required property int index
+                            required property var modelData
+                            width: grid.cellW
+                            height: grid.cellH
                             fileUrl: modelData.url
+                            fileName: modelData.name
                             isDir: modelData.isDir
-                        }
-                        PlasmaComponents.Label {
-                            Layout.fillWidth: true
-                            Layout.fillHeight: true
-                            text: modelData.name
-                            horizontalAlignment: Text.AlignHCenter
-                            verticalAlignment: Text.AlignTop
-                            wrapMode: Text.Wrap
-                            elide: Text.ElideRight
-                            maximumLineCount: 2
-                            font: Kirigami.Theme.smallFont
+
+                            opacity: grid.active ? 1.0 : 0.0
+                            scale: grid.active ? 1.0 : 0.85
+                            Behavior on opacity { SequentialAnimation {
+                                PauseAnimation { duration: grid.active ? index * 18 : 0 }
+                                NumberAnimation { duration: 160 }
+                            } }
+                            Behavior on scale { SequentialAnimation {
+                                PauseAnimation { duration: grid.active ? index * 18 : 0 }
+                                NumberAnimation { duration: 200; easing.type: Easing.OutBack; easing.overshoot: 1.1 }
+                            } }
+
+                            onClicked: grid.openFile(modelData.url)
+
+                            Rectangle {
+                                anchors.fill: parent
+                                anchors.margins: Kirigami.Units.smallSpacing / 2
+                                radius: Kirigami.Units.smallSpacing
+                                color: Kirigami.Theme.highlightColor
+                                opacity: cell.hovered ? 0.18 : 0.0
+                                Behavior on opacity { NumberAnimation { duration: 120 } }
+                            }
+
+                            ColumnLayout {
+                                anchors.fill: parent
+                                anchors.margins: Kirigami.Units.smallSpacing
+                                spacing: Kirigami.Units.smallSpacing
+                                FileThumb {
+                                    Layout.alignment: Qt.AlignHCenter
+                                    Layout.preferredWidth: grid.iconSize
+                                    Layout.preferredHeight: grid.iconSize
+                                    fileName: modelData.name
+                                    fileUrl: modelData.url
+                                    isDir: modelData.isDir
+                                }
+                                PlasmaComponents.Label {
+                                    Layout.fillWidth: true
+                                    Layout.fillHeight: true
+                                    text: modelData.name
+                                    horizontalAlignment: Text.AlignHCenter
+                                    verticalAlignment: Text.AlignTop
+                                    wrapMode: Text.Wrap
+                                    elide: Text.ElideRight
+                                    maximumLineCount: 2
+                                    font: Kirigami.Theme.smallFont
+                                }
+                            }
                         }
                     }
                 }
             }
         }
-        Item { Layout.fillHeight: true }
     }
 }

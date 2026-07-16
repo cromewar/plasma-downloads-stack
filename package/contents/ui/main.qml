@@ -301,10 +301,11 @@ PlasmoidItem {
         // lets items be dragged out into other windows without closing.
         type: PlasmaCore.Dialog.AppletPopup
         hideOnWindowDeactivate: true
-        // The fan floats frameless; grid and list sit on the standard popup card.
-        backgroundHints: Plasmoid.configuration.viewMode === 0
-            ? PlasmaCore.Dialog.NoBackground
-            : PlasmaCore.Dialog.StandardBackground
+        // Every view draws its own surface (the fan floats; grid and list use a
+        // self-drawn card), so the dialog itself is always frameless. This keeps
+        // the visible content hugging its size even when the shell hands the
+        // popup window a larger, stale height.
+        backgroundHints: PlasmaCore.Dialog.NoBackground
 
         mainItem: Loader {
             id: viewLoader
@@ -342,6 +343,7 @@ PlasmoidItem {
             columns: Plasmoid.configuration.gridColumns
             folderPath: root.resolvedPath
             active: root.fanShown
+            up: root.openUp
             onOpenFile: (url) => root.openAndClose(url)
             onOpenFolder: root.openFolderAndClose()
             onCloseRequested: root.closeFan()
@@ -355,6 +357,7 @@ PlasmoidItem {
             iconSize: Plasmoid.configuration.iconSize
             folderPath: root.resolvedPath
             active: root.fanShown
+            up: root.openUp
             onOpenFile: (url) => root.openAndClose(url)
             onOpenFolder: root.openFolderAndClose()
             onCloseRequested: root.closeFan()
