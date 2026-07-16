@@ -4,18 +4,39 @@ import org.kde.kirigami as Kirigami
 
 // A modern overlay scrollbar: hidden by default, it fades in while you scroll
 // or when the pointer is near it, then fades back out. Draggable like any
-// window scrollbar. Attach as `QQC2.ScrollBar.vertical: HoverScrollBar { ... }`.
+// window scrollbar.
+//
+// Two ways to use it:
+//   • Attached:   QQC2.ScrollBar.vertical: HoverScrollBar { ... }   (leave `view` unset)
+//   • Standalone: HoverScrollBar { view: someFlickable; ... }       (position it yourself)
+// Standalone avoids the attached bar reserving/clipping space at the flickable edge.
 QQC2.ScrollBar {
     id: control
+    property Flickable view: null
+
     interactive: true
-    // A slightly wide hit area so "near the bar" reveals it (the handle drawn
-    // inside stays thin); the area is hoverable even while fully transparent.
+    orientation: Qt.Vertical
     implicitWidth: 14
 
+    // Standalone: mirror the flickable, and drive it while dragging the handle.
+    Binding {
+        target: control; property: "size"; when: control.view !== null
+        value: control.view ? control.view.visibleArea.heightRatio : 1
+    }
+    Binding {
+        target: control; property: "position"; when: control.view !== null && !control.pressed
+        value: control.view ? control.view.visibleArea.yPosition : 0
+    }
+
     // Reveal briefly on any position change — covers wheel/trackpad scrolling
-    // (which moves contentY directly) and dragging the handle.
+    // (which move contentY directly) and dragging the handle.
     property bool scrolling: false
-    onPositionChanged: { scrolling = true; hideTimer.restart(); }
+    onPositionChanged: {
+        scrolling = true;
+        hideTimer.restart();
+        if (control.view && control.pressed)
+            control.view.contentY = control.view.originY + control.position * control.view.contentHeight;
+    }
     Timer { id: hideTimer; interval: 1200; onTriggered: control.scrolling = false }
 
     readonly property bool reveal: hovered || pressed || scrolling

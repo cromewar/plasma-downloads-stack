@@ -28,11 +28,14 @@ Item {
     readonly property int chipGap: 14
     readonly property real gapToLabel: 10
     readonly property real labelW: iconSize * 3
-    readonly property real iconColStart: labelsLeft ? (pad + labelW + gapToLabel) : pad
+    // The icon band is centred in the popup with equal space on each side, so that
+    // when the shell centres the popup on the panel icon the icons sit directly
+    // above it. The labels fill the side toward screen-centre; the opposite side
+    // is a transparent spacer (and holds the scrollbar).
+    readonly property real sideMax: pad + labelW + gapToLabel
+    readonly property real iconBandW: curveAmount + iconSize
+    readonly property real iconColStart: sideMax
     readonly property real gap: iconSize * 1.04
-    // The scrollbar sits at the flickable's right edge and reserves space there;
-    // give it its own gutter so it never overlaps (and clips) the files.
-    readonly property real scrollGutter: needsScroll ? Math.round(Kirigami.Units.gridUnit * 2) : 0
 
     // The shell anchors the popup's near edge to the panel icon, which for a
     // (floating) dock sits a little inside the panel — so keep the files clear of
@@ -54,7 +57,7 @@ Item {
 
     property int hoveredIndex: -1
 
-    implicitWidth: pad + labelW + gapToLabel + iconSize + curveAmount + pad + scrollGutter
+    implicitWidth: sideMax * 2 + iconBandW
     implicitHeight: overhead + contentVisibleH
 
     function iconLeft(i) {
@@ -130,9 +133,19 @@ Item {
             }
         }
 
-        QQC2.ScrollBar.vertical: HoverScrollBar {
-            policy: fan.needsScroll ? QQC2.ScrollBar.AlwaysOn : QQC2.ScrollBar.AlwaysOff
-        }
+    }
+
+    // Standalone scrollbar, placed just outside the icon band on the spacer side
+    // (so it never overlaps/clips the icons the way an attached bar would). It
+    // sits next to the icons rather than at the far popup edge.
+    HoverScrollBar {
+        id: sbar
+        view: flick
+        visible: fan.needsScroll
+        height: flick.height
+        y: flick.y
+        x: fan.labelsLeft ? (fan.iconColStart + fan.iconBandW + Kirigami.Units.smallSpacing)
+                          : (fan.iconColStart - Kirigami.Units.smallSpacing - width)
     }
 
     // Scroll with the mouse wheel or a two-finger trackpad gesture, from anywhere
