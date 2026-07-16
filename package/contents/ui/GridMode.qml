@@ -138,23 +138,8 @@ Item {
                     }
                 }
 
-                QQC2.ScrollBar.vertical: QQC2.ScrollBar {
-                    id: gsbar
+                QQC2.ScrollBar.vertical: HoverScrollBar {
                     policy: gridFlick.overflow ? QQC2.ScrollBar.AlwaysOn : QQC2.ScrollBar.AlwaysOff
-                    interactive: true
-                    implicitWidth: 13
-                    contentItem: Rectangle {
-                        implicitWidth: 8
-                        radius: width / 2
-                        color: gsbar.pressed ? Kirigami.Theme.highlightColor
-                            : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b,
-                                      gsbar.hovered ? 0.7 : 0.45)
-                    }
-                    background: Rectangle {
-                        implicitWidth: 8
-                        radius: width / 2
-                        color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.12)
-                    }
                 }
 
                 Grid {
