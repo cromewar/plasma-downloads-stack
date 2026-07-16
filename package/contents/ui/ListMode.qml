@@ -35,7 +35,9 @@ Item {
     readonly property real chromeH: pad * 2 + header.implicitHeight
         + Kirigami.Units.smallSpacing * 2 + sep.height
     readonly property real naturalCardH: chromeH + listH
-    readonly property real maxCardH: availH * 0.82 - panelInset
+    // Grow with the content up to a comfortable limit, then scroll — so a lot of
+    // files don't stretch the card to the full height of the screen.
+    readonly property real maxCardH: availH * 0.6 - panelInset
     readonly property real cardH: Math.min(naturalCardH, maxCardH)
     readonly property real cardW: Kirigami.Units.gridUnit * 17
 
@@ -45,6 +47,21 @@ Item {
     MouseArea {
         anchors.fill: parent
         onClicked: list.closeRequested()
+    }
+
+    // Scroll with the mouse wheel or a two-finger trackpad gesture from anywhere
+    // over the card. Kept at the root (not inside the ListView, which would
+    // reparent it into the scrolling content and miss events).
+    WheelHandler {
+        enabled: listView.overflow
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: (event) => {
+            var dy = event.pixelDelta.y;
+            if (dy === 0)
+                dy = event.angleDelta.y / 120 * list.rowH * 1.5;
+            var maxY = listView.contentHeight - listView.height;
+            listView.contentY = Math.max(0, Math.min(maxY, listView.contentY - dy));
+        }
     }
 
     Kirigami.ShadowedRectangle {
@@ -119,18 +136,6 @@ Item {
                 boundsBehavior: Flickable.StopAtBounds
                 reuseItems: true
                 readonly property bool overflow: contentHeight > height
-
-                WheelHandler {
-                    enabled: listView.overflow
-                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    onWheel: (event) => {
-                        var dy = event.pixelDelta.y;
-                        if (dy === 0)
-                            dy = event.angleDelta.y / 120 * list.rowH * 1.5;
-                        var maxY = listView.contentHeight - listView.height;
-                        listView.contentY = Math.max(0, Math.min(maxY, listView.contentY - dy));
-                    }
-                }
 
                 QQC2.ScrollBar.vertical: HoverScrollBar {
                     policy: listView.overflow ? QQC2.ScrollBar.AlwaysOn : QQC2.ScrollBar.AlwaysOff

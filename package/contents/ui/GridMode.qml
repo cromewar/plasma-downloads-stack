@@ -39,7 +39,9 @@ Item {
     readonly property real chromeH: pad * 2 + header.implicitHeight
         + Kirigami.Units.smallSpacing * 3 + sep.height
     readonly property real naturalCardH: chromeH + gridH
-    readonly property real maxCardH: availH * 0.82 - panelInset
+    // Grow with the content up to a comfortable limit, then scroll — so a lot of
+    // files don't stretch the card to the full height of the screen.
+    readonly property real maxCardH: availH * 0.6 - panelInset
     readonly property real cardH: Math.min(naturalCardH, maxCardH)
     readonly property real cardW: Math.max(cols * cellW, Kirigami.Units.gridUnit * 12) + pad * 2
 
@@ -50,6 +52,21 @@ Item {
     MouseArea {
         anchors.fill: parent
         onClicked: grid.closeRequested()
+    }
+
+    // Scroll with the mouse wheel or a two-finger trackpad gesture from anywhere
+    // over the card. Kept at the root (not inside the Flickable, which would
+    // reparent it into the scrolling content and miss events).
+    WheelHandler {
+        enabled: gridFlick.overflow
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: (event) => {
+            var dy = event.pixelDelta.y;
+            if (dy === 0)
+                dy = event.angleDelta.y / 120 * grid.cellH * 0.6;
+            var maxY = gridFlick.contentHeight - gridFlick.height;
+            gridFlick.contentY = Math.max(0, Math.min(maxY, gridFlick.contentY - dy));
+        }
     }
 
     Kirigami.ShadowedRectangle {
@@ -125,18 +142,6 @@ Item {
                 interactive: false
                 boundsBehavior: Flickable.StopAtBounds
                 readonly property bool overflow: contentHeight > height
-
-                WheelHandler {
-                    enabled: gridFlick.overflow
-                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
-                    onWheel: (event) => {
-                        var dy = event.pixelDelta.y;
-                        if (dy === 0)
-                            dy = event.angleDelta.y / 120 * grid.cellH * 0.6;
-                        var maxY = gridFlick.contentHeight - gridFlick.height;
-                        gridFlick.contentY = Math.max(0, Math.min(maxY, gridFlick.contentY - dy));
-                    }
-                }
 
                 QQC2.ScrollBar.vertical: HoverScrollBar {
                     policy: gridFlick.overflow ? QQC2.ScrollBar.AlwaysOn : QQC2.ScrollBar.AlwaysOff
