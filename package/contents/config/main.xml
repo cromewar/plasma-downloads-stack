@@ -10,7 +10,7 @@
         </entry>
         <entry name="maxItems" type="Int">
             <label>How many recent files to show.</label>
-            <default>8</default>
+            <default>12</default>
         </entry>
         <entry name="sortBy" type="Enum">
             <label>What to sort the files by.</label>

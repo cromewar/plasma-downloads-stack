@@ -31,12 +31,19 @@ Item {
     readonly property real iconColStart: labelsLeft ? (pad + labelW + gapToLabel) : pad
     readonly property real gap: iconSize * 1.04
 
+    // The shell anchors the popup's near edge to the panel icon, which for a
+    // (floating) dock sits a little inside the panel — so keep the files clear of
+    // it with an inset on the panel side.
+    readonly property real panelInset: Math.round(iconSize * 0.6)
+    readonly property real topSpace: up ? (pad + chipH + chipGap) : (pad + panelInset)
+    readonly property real botSpace: up ? (pad + panelInset) : (pad + chipH + chipGap)
+    readonly property real overhead: topSpace + botSpace
+
     // The fan grows with the number of files, but its height is capped to the
     // space on screen. Once the files no longer fit, the column scrolls instead
     // of shrinking, so it works for any count.
-    readonly property real overhead: pad * 2 + chipH + chipGap
-    readonly property real maxHeight: (Screen.desktopAvailableHeight > 0
-        ? Screen.desktopAvailableHeight : 1000) * 0.82
+    readonly property real maxHeight: Math.max(iconSize * 4,
+        (Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : 1000) * 0.82)
     readonly property real naturalContentH: n > 0 ? ((n - 1) * gap + iconSize) : iconSize
     readonly property real maxContentH: Math.max(iconSize * 2, maxHeight - overhead)
     readonly property bool needsScroll: naturalContentH > maxContentH
@@ -77,7 +84,7 @@ Item {
         id: flick
         visible: fan.n > 0
         x: 0
-        y: fan.up ? (fan.pad + fan.chipH + fan.chipGap) : fan.pad
+        y: fan.topSpace
         width: fan.implicitWidth
         height: fan.contentVisibleH
         contentWidth: width
