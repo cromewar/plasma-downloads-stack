@@ -90,7 +90,9 @@ Item {
         contentWidth: width
         contentHeight: fan.naturalContentH
         clip: true
-        interactive: fan.needsScroll
+        // A press-drag inside the fan drags a file OUT, so don't flick on drag.
+        // Scrolling is handled by the wheel/trackpad handler and the scrollbar.
+        interactive: false
         boundsBehavior: Flickable.StopAtBounds
         Component.onCompleted: fan.resetScroll()
 
@@ -127,8 +129,36 @@ Item {
 
         QQC2.ScrollBar.vertical: QQC2.ScrollBar {
             id: sbar
-            visible: fan.needsScroll
-            policy: QQC2.ScrollBar.AsNeeded
+            policy: fan.needsScroll ? QQC2.ScrollBar.AlwaysOn : QQC2.ScrollBar.AlwaysOff
+            interactive: true
+            implicitWidth: 13
+            contentItem: Rectangle {
+                implicitWidth: 8
+                radius: width / 2
+                color: sbar.pressed ? Kirigami.Theme.highlightColor
+                    : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b,
+                              sbar.hovered ? 0.7 : 0.45)
+            }
+            background: Rectangle {
+                implicitWidth: 8
+                radius: width / 2
+                color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.12)
+            }
+        }
+    }
+
+    // Scroll with the mouse wheel or a two-finger trackpad gesture, from anywhere
+    // over the fan (a Flickable alone misses the trackpad when the pointer is on a
+    // draggable tile).
+    WheelHandler {
+        enabled: fan.needsScroll
+        acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+        onWheel: (event) => {
+            var dy = event.pixelDelta.y;
+            if (dy === 0)
+                dy = event.angleDelta.y / 120 * (fan.gap * 0.7);
+            var maxY = flick.contentHeight - flick.height;
+            flick.contentY = Math.max(0, Math.min(maxY, flick.contentY - dy));
         }
     }
 

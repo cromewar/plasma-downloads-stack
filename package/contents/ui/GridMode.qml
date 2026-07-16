@@ -121,10 +121,41 @@ Item {
                 contentHeight: theGrid.height
                 contentWidth: width
                 clip: true
-                interactive: contentHeight > height
+                // Drag drags a file out; scroll via wheel/trackpad or the scrollbar.
+                interactive: false
                 boundsBehavior: Flickable.StopAtBounds
+                readonly property bool overflow: contentHeight > height
 
-                QQC2.ScrollBar.vertical: QQC2.ScrollBar { policy: QQC2.ScrollBar.AsNeeded }
+                WheelHandler {
+                    enabled: gridFlick.overflow
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: (event) => {
+                        var dy = event.pixelDelta.y;
+                        if (dy === 0)
+                            dy = event.angleDelta.y / 120 * grid.cellH * 0.6;
+                        var maxY = gridFlick.contentHeight - gridFlick.height;
+                        gridFlick.contentY = Math.max(0, Math.min(maxY, gridFlick.contentY - dy));
+                    }
+                }
+
+                QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+                    id: gsbar
+                    policy: gridFlick.overflow ? QQC2.ScrollBar.AlwaysOn : QQC2.ScrollBar.AlwaysOff
+                    interactive: true
+                    implicitWidth: 13
+                    contentItem: Rectangle {
+                        implicitWidth: 8
+                        radius: width / 2
+                        color: gsbar.pressed ? Kirigami.Theme.highlightColor
+                            : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b,
+                                      gsbar.hovered ? 0.7 : 0.45)
+                    }
+                    background: Rectangle {
+                        implicitWidth: 8
+                        radius: width / 2
+                        color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.12)
+                    }
+                }
 
                 Grid {
                     id: theGrid

@@ -1,6 +1,7 @@
 import QtQuick
 import QtQuick.Window
 import QtQuick.Layouts
+import QtQuick.Controls as QQC2
 import org.kde.kirigami as Kirigami
 import org.kde.plasma.components as PlasmaComponents
 import "IconTools.js" as IconTools
@@ -113,8 +114,42 @@ Item {
                 Layout.fillHeight: true
                 model: list.files
                 clip: true
+                // Drag drags a file out; scroll via wheel/trackpad or the scrollbar.
+                interactive: false
                 boundsBehavior: Flickable.StopAtBounds
                 reuseItems: true
+                readonly property bool overflow: contentHeight > height
+
+                WheelHandler {
+                    enabled: listView.overflow
+                    acceptedDevices: PointerDevice.Mouse | PointerDevice.TouchPad
+                    onWheel: (event) => {
+                        var dy = event.pixelDelta.y;
+                        if (dy === 0)
+                            dy = event.angleDelta.y / 120 * list.rowH * 1.5;
+                        var maxY = listView.contentHeight - listView.height;
+                        listView.contentY = Math.max(0, Math.min(maxY, listView.contentY - dy));
+                    }
+                }
+
+                QQC2.ScrollBar.vertical: QQC2.ScrollBar {
+                    id: lsbar
+                    policy: listView.overflow ? QQC2.ScrollBar.AlwaysOn : QQC2.ScrollBar.AlwaysOff
+                    interactive: true
+                    implicitWidth: 13
+                    contentItem: Rectangle {
+                        implicitWidth: 8
+                        radius: width / 2
+                        color: lsbar.pressed ? Kirigami.Theme.highlightColor
+                            : Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b,
+                                      lsbar.hovered ? 0.7 : 0.45)
+                    }
+                    background: Rectangle {
+                        implicitWidth: 8
+                        radius: width / 2
+                        color: Qt.rgba(Kirigami.Theme.textColor.r, Kirigami.Theme.textColor.g, Kirigami.Theme.textColor.b, 0.12)
+                    }
+                }
 
                 delegate: FileDragItem {
                     id: row
