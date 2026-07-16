@@ -22,16 +22,19 @@ Item {
     signal closeRequested()
 
     readonly property int n: files.length
-    readonly property real curveAmount: iconSize * 0.55
+    // The fan bows outward as it grows — a few files stack nearly straight, a full
+    // stack leans further to the side (like the macOS "heavy" Downloads fan).
+    readonly property real curveAmount: iconSize * Math.min(0.45 + n * 0.05, 1.1)
     readonly property int pad: 16
     readonly property int chipH: 30
     readonly property int chipGap: 14
     readonly property real gapToLabel: 10
     readonly property real labelW: iconSize * 3
-    // The icon band is centred in the popup with equal space on each side, so that
-    // when the shell centres the popup on the panel icon the icons sit directly
-    // above it. The labels fill the side toward screen-centre; the opposite side
-    // is a transparent spacer (and holds the scrollbar).
+    // The NEWEST file (nearest the dock, at iconColStart) is centred in the popup,
+    // so when the shell centres the popup on the panel icon that file sits directly
+    // above it; the fan then bows off toward the spacer side. The labels fill the
+    // side toward screen-centre; the opposite side is a transparent spacer (and
+    // holds the scrollbar).
     readonly property real sideMax: pad + labelW + gapToLabel
     readonly property real iconBandW: curveAmount + iconSize
     readonly property real iconColStart: sideMax
@@ -57,7 +60,7 @@ Item {
 
     property int hoveredIndex: -1
 
-    implicitWidth: sideMax * 2 + iconBandW
+    implicitWidth: sideMax * 2 + iconSize
     implicitHeight: overhead + contentVisibleH
 
     function iconLeft(i) {
