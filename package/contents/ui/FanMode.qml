@@ -30,6 +30,9 @@ Item {
     readonly property real labelW: iconSize * 3
     readonly property real iconColStart: labelsLeft ? (pad + labelW + gapToLabel) : pad
     readonly property real gap: iconSize * 1.04
+    // The scrollbar sits at the flickable's right edge and reserves space there;
+    // give it its own gutter so it never overlaps (and clips) the files.
+    readonly property real scrollGutter: needsScroll ? Math.round(Kirigami.Units.gridUnit * 2) : 0
 
     // The shell anchors the popup's near edge to the panel icon, which for a
     // (floating) dock sits a little inside the panel — so keep the files clear of
@@ -51,7 +54,7 @@ Item {
 
     property int hoveredIndex: -1
 
-    implicitWidth: pad + labelW + gapToLabel + iconSize + curveAmount + pad
+    implicitWidth: pad + labelW + gapToLabel + iconSize + curveAmount + pad + scrollGutter
     implicitHeight: overhead + contentVisibleH
 
     function iconLeft(i) {
