@@ -103,16 +103,43 @@ PlasmoidItem {
 
     onFanOpenChanged: {
         if (fanOpen) {
-            // Decide label side from the widget's position within its panel
-            // (window-relative — reliable on Wayland, unlike global coords).
+            // Initial guess for the label side from the widget's position within its
+            // panel window (reliable on Wayland even before the popup is on screen);
+            // alignFan() refines it from real screen coordinates once the popup opens.
             if (compactItem && compactItem.windowFraction !== undefined)
                 root.fanLabelsLeft = compactItem.windowFraction() > 0.5;
             fanDialog.visible = true;
-            Qt.callLater(function () { root.fanShown = true; });
+            Qt.callLater(function () { root.fanShown = true; root.alignFan(); });
         } else {
             root.fanShown = false;
+            if (viewLoader.item && viewLoader.item.anchorIconX !== undefined)
+                viewLoader.item.anchorIconX = -1;   // recompute fresh on next open
             collapseTimer.restart();
         }
+    }
+
+    // Slide the fan so its newest file sits directly over the panel icon, whatever
+    // the shell did with the popup (centre it, or clamp it to a screen edge). Uses
+    // real global screen coordinates — the popup's origin and the panel icon's
+    // centre — so it is correct on any screen size and any widget position, not just
+    // the one the fan happened to be tuned on. A no-op when the shell already centred
+    // the popup on the icon. Only the Fan view exposes anchorIconX; Grid/List ignore.
+    function alignFan() {
+        if (!fanOpen || !compactItem)
+            return;
+        var item = viewLoader.item;
+        if (!item || item.anchorIconX === undefined)
+            return;
+        var gIcon = compactItem.mapToGlobal(compactItem.width / 2, compactItem.height / 2);
+        var gOrigin = item.mapToGlobal(0, 0);
+        if (!gIcon || !gOrigin)
+            return;
+        item.anchorIconX = gIcon.x - gOrigin.x;         // panel icon's x in fan coords
+        // Labels fill the side toward screen-centre — decided from the icon's true
+        // position on its screen (works for full-width panels and floating docks alike).
+        var scr = compactItem.Screen;
+        if (scr && scr.width > 0)
+            root.fanLabelsLeft = gIcon.x > (scr.virtualX + scr.width / 2);
     }
 
     Timer {
@@ -130,6 +157,10 @@ PlasmoidItem {
                 root.fanShown = false;
             }
         }
+        // The shell positions/edge-clamps the popup asynchronously (layer-shell
+        // configure), so re-align once it settles at (or moves to) its final spot.
+        function onXChanged() { if (root.fanOpen) Qt.callLater(root.alignFan); }
+        function onWidthChanged() { if (root.fanOpen) Qt.callLater(root.alignFan); }
     }
 
     // ------------------------------------------------ compact representation

@@ -30,14 +30,31 @@ Item {
     readonly property int chipGap: 14
     readonly property real gapToLabel: 10
     readonly property real labelW: iconSize * 3
-    // The NEWEST file (nearest the dock, at iconColStart) is centred in the popup,
-    // so when the shell centres the popup on the panel icon that file sits directly
-    // above it; the fan then bows off toward the spacer side. The labels fill the
+    // The NEWEST file (nearest the dock) is placed directly over the panel icon.
+    // The popup is symmetric and a good bit wider than the visible fan, so wherever
+    // the shell puts it — centred on the icon, or clamped to a screen edge — there
+    // is always room to slide the icon column back over the icon. `anchorIconX`
+    // (set by the host once the popup is on screen, from real screen coordinates)
+    // is that icon's x in our own coordinates; until it is known we fall back to the
+    // symmetric centre. The fan bows off toward the spacer side; the labels fill the
     // side toward screen-centre; the opposite side is a transparent spacer (and
     // holds the scrollbar).
     readonly property real sideMax: pad + labelW + gapToLabel
     readonly property real iconBandW: curveAmount + iconSize
-    readonly property real iconColStart: sideMax
+
+    // x, in this item's own coordinates, directly above the panel icon (-1 = not yet
+    // known). Set by main.qml so the newest file lands over the dock icon regardless
+    // of how the shell positioned (or edge-clamped) the popup — i.e. on any screen.
+    property real anchorIconX: -1
+    readonly property real defColStart: sideMax
+    // Bounds that keep the whole fan (labels on one side, the bow on the other)
+    // inside the popup even when the anchor is pushed toward an edge.
+    readonly property real minColStart: labelsLeft ? sideMax : pad
+    readonly property real maxColStart: implicitWidth - pad - iconSize - curveAmount
+        - (labelsLeft ? 0 : (gapToLabel + labelW))
+    readonly property real iconColStart: (anchorIconX >= 0 && maxColStart > minColStart)
+        ? Math.max(minColStart, Math.min(maxColStart, anchorIconX - iconSize / 2))
+        : defColStart
     readonly property real gap: iconSize * 1.04
 
     // The shell anchors the popup's near edge to the panel icon, which for a
