@@ -14,6 +14,7 @@ KCM.SimpleKCM {
     property alias cfg_gridColumns: colSpin.value
     property alias cfg_compactStyle: styleCombo.currentIndex
     property alias cfg_showBadge: badgeCheck.checked
+    property alias cfg_showFolderIcons: folderIconsCheck.checked
 
     Kirigami.FormLayout {
         QQC2.ComboBox {
@@ -71,6 +72,11 @@ KCM.SimpleKCM {
         QQC2.CheckBox {
             id: badgeCheck
             text: i18n("Show item-count badge")
+        }
+
+        QQC2.CheckBox {
+            id: folderIconsCheck
+            text: i18n("Use custom folder icons")
         }
     }
 }

@@ -103,6 +103,9 @@ PlasmoidItem {
 
     onFanOpenChanged: {
         if (fanOpen) {
+            // Re-read custom folder icons each time the popup opens, so a folder's
+            // icon changed in Dolphin shows up without a plasmoid restart.
+            IconTools.clearFolderIconCache();
             // Decide label side from the widget's position within its panel
             // (window-relative — reliable on Wayland, unlike global coords).
             if (compactItem && compactItem.windowFraction !== undefined)
