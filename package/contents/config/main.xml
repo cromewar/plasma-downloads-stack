@@ -61,5 +61,9 @@
             <label>Show the item-count badge on the panel icon.</label>
             <default>true</default>
         </entry>
+        <entry name="showFolderIcons" type="Bool">
+            <label>Show the custom icon each folder was given in Dolphin (from its .directory file).</label>
+            <default>false</default>
+        </entry>
     </group>
 </kcfg>

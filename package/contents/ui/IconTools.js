@@ -100,3 +100,52 @@ function iconName(name, isDir) {
     }
     return "application-octet-stream";
 }
+
+// ---------------------------------------------------------------- folder icons
+// A folder's custom icon lives in "<folder>/.directory": a desktop-entry/INI file
+// with an [Desktop Entry] group and an Icon= key (a themed name like "folder-blue",
+// or an absolute path). The read runs in QML via QtCore.Settings (Qt 6.5+ blocks
+// XMLHttpRequest GET on local files by default); these helpers do the pure-string
+// work and hold a process-wide cache.
+
+// Build the ".directory" file URL from a folder's file:// url.
+function directoryFileUrl(folderUrl) {
+    var u = "" + (folderUrl || "");
+    if (u.length === 0)
+        return "";
+    return u.replace(/\/+$/, "") + "/.directory";
+}
+
+// Turn a raw Icon= value into something Kirigami.Icon.source accepts.
+// Freedesktop rule: a value containing '/' is a path, otherwise a themed name.
+function resolveIconValue(folderUrl, raw) {
+    if (raw === undefined || raw === null)
+        return "";
+    var v = ("" + raw).trim();
+    if (v.length === 0)
+        return "";                                   // no value -> generic folder
+    if (v.indexOf("/") === -1)
+        return v;                                     // themed name -> as-is
+    if (v.indexOf("file://") === 0)
+        return v;                                     // already a URL
+    if (v.charAt(0) === "/")
+        return "file://" + v;                         // absolute path
+    if (v.charAt(0) === "~")
+        return "";                                    // home-relative -> unsupported
+    return ("" + folderUrl).replace(/\/+$/, "") + "/" + v;  // relative to the folder
+}
+
+// Process-wide cache (persists for the life of the QML engine because this is a
+// `.pragma library`). Value = resolved source string; "" means "no custom icon";
+// `undefined` (missing key) means "not read yet".
+var _folderIconCache = ({});
+
+function cachedFolderIcon(folderUrl) {
+    return _folderIconCache["" + folderUrl];
+}
+function setCachedFolderIcon(folderUrl, src) {
+    _folderIconCache["" + folderUrl] = (src === undefined || src === null) ? "" : ("" + src);
+}
+function clearFolderIconCache() {
+    _folderIconCache = ({});
+}
