@@ -139,10 +139,11 @@ PlasmoidItem {
             return;
         item.anchorIconX = gIcon.x - gOrigin.x;         // panel icon's x in fan coords
         // Labels fill the side toward screen-centre — decided from the icon's true
-        // position on its screen (works for full-width panels and floating docks alike).
-        var scr = compactItem.Screen;
-        if (scr && scr.width > 0)
-            root.fanLabelsLeft = gIcon.x > (scr.virtualX + scr.width / 2);
+        // position on its screen (works for full-width panels and floating docks
+        // alike). Screen is an attached property, so read it in our own scope —
+        // root lives in the same panel window as the icon.
+        if (Screen.width > 0)
+            root.fanLabelsLeft = gIcon.x > (Screen.virtualX + Screen.width / 2);
     }
 
     Timer {
