@@ -57,28 +57,51 @@ Item {
         : defColStart
     readonly property real gap: iconSize * 1.04
 
-    // The shell anchors the popup's near edge to the panel icon, which for a
-    // (floating) dock sits a little inside the panel — so keep the files clear of
-    // it with an inset on the panel side.
-    readonly property real panelInset: Math.round(iconSize * 0.6)
-    readonly property real topSpace: up ? (pad + chipH + chipGap) : (pad + panelInset)
-    readonly property real botSpace: up ? (pad + panelInset) : (pad + chipH + chipGap)
-    readonly property real overhead: topSpace + botSpace
-
-    // The fan grows with the number of files, but its height is capped to the
-    // space on screen. Once the files no longer fit, the column scrolls instead
-    // of shrinking, so it works for any count.
-    readonly property real maxHeight: Math.max(iconSize * 4,
+    // ---------------------------------------------------------------- canvas
+    // STRUCTURAL RULE: the popup window's size never depends on the number of
+    // files. The canvas is a constant-size (per screen) transparent surface and
+    // the fan is laid out INSIDE it, anchored to the measured position of the
+    // panel icon (anchorIconX / anchorIconY). Because adding or removing files
+    // moves pixels inside the window instead of resizing the window, the shell
+    // never re-positions or re-clamps the popup, so the fan cannot drift — on
+    // any screen size, with any number of items.
+    readonly property real canvasH: Math.max(iconSize * 6,
         (Screen.desktopAvailableHeight > 0 ? Screen.desktopAvailableHeight : 1000) * 0.82)
+    implicitWidth: sideMax * 2 + iconSize
+    implicitHeight: canvasH
+    // If the shell hands the window a different height than we asked for, lay
+    // out against what we actually got.
+    readonly property real cH: height > 0 ? height : canvasH
+
+    // y, in this item's own coordinates, of the panel icon's near edge (its top
+    // for an upward fan, its bottom for a downward one). NaN = not yet measured
+    // (fall back to the canvas edge). Set by main.qml from global screen coords,
+    // so the fan hugs the dock wherever the shell actually put the window.
+    property real anchorIconY: NaN
+
+    // Gap kept between the fan and the dock.
+    readonly property real panelInset: Math.round(iconSize * 0.6)
+
+    // Edge of the content band nearest the panel: just clear of the measured
+    // icon, clamped to the canvas so a bad measurement can never push the fan
+    // out of the window.
+    readonly property real nearEdge: up
+        ? (isNaN(anchorIconY) ? cH : Math.max(iconSize, Math.min(anchorIconY, cH))) - panelInset
+        : (isNaN(anchorIconY) ? 0 : Math.max(0, Math.min(anchorIconY, cH - iconSize))) + panelInset
+
+    // Room for the chip on the far side, then cap the content to what fits;
+    // past that the column scrolls, so any number of files works.
+    readonly property real chipSpace: pad + chipH + chipGap
     readonly property real naturalContentH: n > 0 ? ((n - 1) * gap + iconSize) : iconSize
-    readonly property real maxContentH: Math.max(iconSize * 2, maxHeight - overhead)
+    readonly property real maxContentH: Math.max(iconSize * 2,
+        (up ? nearEdge : cH - nearEdge) - chipSpace)
     readonly property bool needsScroll: naturalContentH > maxContentH
     readonly property real contentVisibleH: needsScroll ? maxContentH : naturalContentH
+    // Top of the visible content band; everything (files, chip, scrollbar) is
+    // placed relative to this, so the whole fan slides as one unit.
+    readonly property real contentTop: up ? nearEdge - contentVisibleH : nearEdge
 
     property int hoveredIndex: -1
-
-    implicitWidth: sideMax * 2 + iconSize
-    implicitHeight: overhead + contentVisibleH
 
     function iconLeft(i) {
         return iconColStart + curveAmount * Math.pow(n > 1 ? i / (n - 1) : 0, 1.5);
@@ -110,7 +133,7 @@ Item {
         id: flick
         visible: fan.n > 0
         x: 0
-        y: fan.topSpace
+        y: fan.contentTop
         width: fan.implicitWidth
         height: fan.contentVisibleH
         contentWidth: width
@@ -191,7 +214,10 @@ Item {
         height: fan.chipH
         x: Math.max(fan.pad, Math.min(fan.implicitWidth - fan.pad - width,
                fan.iconLeft(fan.up ? fan.n - 1 : 0) + fan.iconSize / 2 - width / 2))
-        y: fan.up ? fan.pad : fan.implicitHeight - fan.pad - fan.chipH
+        // The chip hugs the far end of the content band rather than the canvas
+        // edge, so it stays next to the files however many there are.
+        y: fan.up ? fan.contentTop - fan.chipGap - fan.chipH
+                  : fan.contentTop + fan.contentVisibleH + fan.chipGap
         hoverEnabled: true
         cursorShape: Qt.PointingHandCursor
         opacity: fan.active ? 1.0 : 0.0
@@ -230,7 +256,8 @@ Item {
 
     PlasmaComponents.Label {
         visible: fan.n === 0
-        anchors.centerIn: parent
+        x: fan.iconColStart + fan.iconSize / 2 - width / 2
+        y: fan.up ? fan.nearEdge - fan.iconSize : fan.nearEdge + fan.iconSize - height
         opacity: 0.7
         text: i18n("No recent downloads")
     }

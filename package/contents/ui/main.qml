@@ -117,6 +117,8 @@ PlasmoidItem {
             root.fanShown = false;
             if (viewLoader.item && viewLoader.item.anchorIconX !== undefined)
                 viewLoader.item.anchorIconX = -1;   // recompute fresh on next open
+            if (viewLoader.item && viewLoader.item.anchorIconY !== undefined)
+                viewLoader.item.anchorIconY = NaN;
             collapseTimer.restart();
         }
     }
@@ -138,6 +140,15 @@ PlasmoidItem {
         if (!gIcon || !gOrigin)
             return;
         item.anchorIconX = gIcon.x - gOrigin.x;         // panel icon's x in fan coords
+        // Vertical anchor: the icon's near edge (top for an upward fan, bottom
+        // for a downward one) in fan coords, so the fan hugs the dock wherever
+        // the shell actually put the popup window.
+        if (item.anchorIconY !== undefined) {
+            var gEdge = root.openUp
+                ? compactItem.mapToGlobal(compactItem.width / 2, 0)
+                : compactItem.mapToGlobal(compactItem.width / 2, compactItem.height);
+            item.anchorIconY = gEdge.y - gOrigin.y;
+        }
         // Labels fill the side toward screen-centre — decided from the icon's true
         // position on its screen (works for full-width panels and floating docks
         // alike). Screen is an attached property, so read it in our own scope —
@@ -162,9 +173,12 @@ PlasmoidItem {
             }
         }
         // The shell positions/edge-clamps the popup asynchronously (layer-shell
-        // configure), so re-align once it settles at (or moves to) its final spot.
+        // configure), so re-align whenever the window settles at (or moves to)
+        // a new spot — any axis, any dimension.
         function onXChanged() { if (root.fanOpen) Qt.callLater(root.alignFan); }
+        function onYChanged() { if (root.fanOpen) Qt.callLater(root.alignFan); }
         function onWidthChanged() { if (root.fanOpen) Qt.callLater(root.alignFan); }
+        function onHeightChanged() { if (root.fanOpen) Qt.callLater(root.alignFan); }
     }
 
     // ------------------------------------------------ compact representation
